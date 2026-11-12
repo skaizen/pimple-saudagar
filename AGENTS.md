@@ -33,3 +33,4 @@ use the editor.
 - 3D twin: pure logic (sun, season, terrain, mock generator) in `src/scene/` with no React/three imports so it stays unit-testable; three.js drawing lives in `src/components/twin/`.
 - Scene data comes from `/scene.json` if present, else the seeded generator — keep both on the `SceneData` type so real data drops in.
 - Per-frame values (traffic, night factor, camera tween) live in refs; zustand holds only UI state.
+- `noUncheckedIndexedAccess` is off: the 3D geometry code indexes point arrays heavily and bounds are guaranteed by loops.

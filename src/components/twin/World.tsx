@@ -22,7 +22,7 @@ function Terrain({ data }: { data: SceneData }) {
   const { geo, tex } = useMemo(() => {
     const t = data.terrain, W = (t.cols - 1) * t.step, D = (t.rows - 1) * t.step;
     const g = new THREE.PlaneGeometry(W, D, 120, 112); g.rotateX(-Math.PI / 2);
-    const p = g.attributes.position;
+    const p = g.getAttribute("position");
     for (let i = 0; i < p.count; i++) p.setY(i, sampleTerrain(t, p.getX(i), p.getZ(i)));
     g.computeVertexNormals();
     const tex = canvasTex((c, s) => {
@@ -47,7 +47,7 @@ function Buildings({ data, night }: { data: SceneData; night: React.MutableRefOb
       const cx = b.ring.reduce((a, p) => a + p[0], 0) / b.ring.length, cz = b.ring.reduce((a, p) => a + p[1], 0) / b.ring.length;
       g.translate(0, sampleTerrain(data.terrain, cx, cz) - 1, 0);
       const col = C(tint[b.cls]).offsetHSL(0, 0, (Math.random() - 0.5) * 0.06);
-      const n = g.attributes.position.count, arr = new Float32Array(n * 3);
+      const n = g.getAttribute("position").count, arr = new Float32Array(n * 3);
       for (let i = 0; i < n; i++) col.toArray(arr, i * 3);
       g.setAttribute("color", new THREE.BufferAttribute(arr, 3));
       return g.index ? g.toNonIndexed() : g;

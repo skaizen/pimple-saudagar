@@ -12,7 +12,7 @@ export function Twin() {
   const ready = useTwin((s) => s.ready), lens = useTwin((s) => s.lens);
   const [gone, setGone] = useState(false);
   useEffect(() => { loadScene().then(setData); }, []);
-  useEffect(() => { if (ready) { const t = setTimeout(() => setGone(true), 900); return () => clearTimeout(t); } }, [ready]);
+  useEffect(() => { if (ready) { const t = setTimeout(() => setGone(true), 900); return () => clearTimeout(t); } return undefined; }, [ready]);
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-background" data-scene-ready={ready ? "" : undefined}>
       {data && <Canvas shadows dpr={[1, 1.75]} camera={{ position: [620, 640, 620], fov: 30, near: 1, far: 4000 }}
