@@ -20,7 +20,7 @@ export function Hud({ data }: { data: SceneData }) {
         <header className="glass pointer-events-auto max-w-md rounded-2xl px-5 py-4">
           <p className="eyebrow">PCMC PUNE · 1 KM² · PINCODE 411027</p>
           <h1 className="font-display text-3xl leading-tight text-foreground md:text-4xl">Pimple Saudagar, <em className="text-primary">Live</em></h1>
-          <p className="mt-1 text-sm text-muted-foreground">Kunal Icon Road · Shivar Chowk · Linear Garden</p>
+          <p className="mt-1 text-sm text-muted-foreground">Govind Garden · Vision 9 · Linear Gardens</p>
           <p className="mt-3 flex items-center gap-2 text-xs text-foreground/80"><span className="live-dot" />{formatHour(s.hour)} IST · {lightLabel(s.hour, s.month)} · {c.buildings} buildings · {c.trees} trees{s.traffic ? " · traffic flowing" : ""}</p>
         </header>
         <div className="glass pointer-events-auto flex flex-wrap gap-1.5 self-start rounded-2xl p-2">
@@ -61,7 +61,7 @@ export function Hud({ data }: { data: SceneData }) {
               {flowering.length ? flowering.map((f) => <span key={f} className="bloom-tag">{f} in bloom</span>) : <span className="text-[11px] text-muted-foreground">No major flowering this month</span>}
             </div>
           </div>}
-          <p className="mt-3 border-t border-border pt-2 text-[10px] leading-relaxed text-muted-foreground">OpenStreetMap · Google Open Buildings · Mapzen SRTM · three.js</p>
+          <p className="mt-3 border-t border-border pt-2 text-[10px] leading-relaxed text-muted-foreground">© OpenStreetMap contributors · heights estimated · three.js</p>
         </div>
       </div>
     </div>

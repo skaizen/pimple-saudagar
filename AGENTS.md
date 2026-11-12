@@ -34,3 +34,4 @@ use the editor.
 - Scene data comes from `/scene.json` if present, else the seeded generator — keep both on the `SceneData` type so real data drops in.
 - Per-frame values (traffic, night factor, camera tween) live in refs; zustand holds only UI state.
 - `noUncheckedIndexedAccess` is off: the 3D geometry code indexes point arrays heavily and bounds are guaranteed by loops.
+- Real map data: `public/scene.json` is generated from an OpenStreetMap extract by `scripts/osm_to_scene.py`; rerun it to refresh, keep OSM attribution in the HUD.
