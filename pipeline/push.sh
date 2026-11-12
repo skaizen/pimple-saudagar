@@ -22,3 +22,4 @@ REPO="${GITHUB_REPO:-pimple-saudagar}"
 echo "🚀 Pushing to GitHub ($USERNAME/$REPO)..."
 git push "https://${GITHUB_TOKEN}@github.com/${USERNAME}/${REPO}.git" main
 echo "✅ Successfully pushed to GitHub!"
+
