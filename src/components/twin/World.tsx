@@ -4,7 +4,7 @@ import { Html, OrbitControls, Environment, Lightformer } from "@react-three/drei
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { SceneData, XZ } from "@/scene/types";
-import { sampleTerrain } from "@/scene/terrain";
+import { sampleTerrain, roadLift } from "@/scene/terrain";
 import { sunDirection, nightFactor, sunPosition } from "@/scene/sun";
 import { canopyColor } from "@/scene/season";
 import { useTwin } from "@/scene/store";
@@ -21,7 +21,7 @@ function canvasTex(draw: (g: CanvasRenderingContext2D, s: number) => void, s = 2
 function Terrain({ data }: { data: SceneData }) {
   const { geo, tex } = useMemo(() => {
     const t = data.terrain, W = (t.cols - 1) * t.step, D = (t.rows - 1) * t.step;
-    const g = new THREE.PlaneGeometry(W, D, 120, 112); g.rotateX(-Math.PI / 2);
+    const g = new THREE.PlaneGeometry(W, D, 160, 160); g.rotateX(-Math.PI / 2);
     const p = g.getAttribute("position");
     for (let i = 0; i < p.count; i++) p.setY(i, sampleTerrain(t, p.getX(i), p.getZ(i)));
     g.computeVertexNormals();
@@ -72,12 +72,15 @@ function Buildings({ data, night }: { data: SceneData; night: React.MutableRefOb
   );
 }
 
-function ribbon(pts: XZ[], width: number, data: SceneData, lift: number, flat?: number) {
+function ribbon(pts: XZ[], width: number, data: SceneData, lift: number, flat?: number, road?: SceneData["roads"][number]) {
   const pos: number[] = [], idx: number[] = [];
+  const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const len = cum[cum.length - 1];
   pts.forEach(([x, z], i) => {
+    const extra = road ? roadLift(road, cum[i], len) : 0;
     const [px, pz] = pts[Math.max(i - 1, 0)], [nx, nz] = pts[Math.min(i + 1, pts.length - 1)];
     const dx = nx - px, dz = nz - pz, l = Math.hypot(dx, dz) || 1, ox = (-dz / l) * width / 2, oz = (dx / l) * width / 2;
-    for (const s of [-1, 1]) { const X = x + ox * s, Z = z + oz * s; pos.push(X, flat ?? sampleTerrain(data.terrain, X, Z) + lift, Z); }
+    for (const s of [-1, 1]) { const X = x + ox * s, Z = z + oz * s; pos.push(X, (flat ?? sampleTerrain(data.terrain, X, Z) + lift) + extra, Z); }
     if (i) { const a = (i - 1) * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
   });
   const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
@@ -85,15 +88,37 @@ function ribbon(pts: XZ[], width: number, data: SceneData, lift: number, flat?: 
 }
 
 function Roads({ data }: { data: SceneData }) {
-  const items = useMemo(() => data.roads.map((r) => {
-    const river = r.type === "river";
-    return { r, g: ribbon(r.points, r.width, data, r.type === "rail" ? 0.8 : 0.35, river ? undefined : undefined) };
-  }), [data]);
-  const col: Record<string, string> = { primary: "#2b2f2e", secondary: "#353936", rail: "#6d5a44", river: "#2e4a52" };
-  return <group>{items.map(({ r, g }, i) => (
-    <mesh key={i} geometry={g} receiveShadow position-y={r.type === "river" ? -0.2 : 0}>
-      <meshStandardMaterial color={col[r.type] ?? "#333"} roughness={r.type === "river" ? 0.15 : 0.9} metalness={r.type === "river" ? 0.4 : 0} side={THREE.DoubleSide} />
-    </mesh>))}</group>;
+  // One merged mesh per road kind keeps draw calls low over 1000+ OSM ways.
+  const items = useMemo(() => {
+    const kind = (r: SceneData["roads"][number]) => r.bridge ? "flyover" : r.tunnel ? "underpass" : r.type;
+    const groups: Record<string, THREE.BufferGeometry[]> = {};
+    const piers: THREE.Matrix4[] = [];
+    for (const r of data.roads) {
+      const lift = r.type === "rail" ? 0.8 : r.bridge ? 0.6 : r.type === "secondary" ? 0.3 : 0.4;
+      (groups[kind(r)] ??= []).push(ribbon(r.points, r.width, data, lift, undefined, r).toNonIndexed());
+      if (r.bridge) {
+        let acc = 0, len = 0; for (let i = 1; i < r.points.length; i++) len += Math.hypot(r.points[i][0] - r.points[i - 1][0], r.points[i][1] - r.points[i - 1][1]);
+        for (let i = 1; i < r.points.length; i++) {
+          const [ax, az] = r.points[i - 1], [bx, bz] = r.points[i], l = Math.hypot(bx - ax, bz - az);
+          for (let t = 12; t < l; t += 24) {
+            const x = ax + ((bx - ax) * t) / l, z = az + ((bz - az) * t) / l, h = roadLift(r, acc + t, len);
+            if (h > 3) piers.push(new THREE.Matrix4().makeScale(2.2, h, 2.2).setPosition(x, sampleTerrain(data.terrain, x, z) + h / 2, z));
+          }
+          acc += l;
+        }
+      }
+    }
+    return { merged: Object.entries(groups).map(([k, gs]) => ({ k, g: mergeGeometries(gs)! })), piers };
+  }, [data]);
+  const pierRef = useRef<THREE.InstancedMesh>(null);
+  useEffect(() => { const m = pierRef.current; if (!m) return; items.piers.forEach((p, i) => m.setMatrixAt(i, p)); m.instanceMatrix.needsUpdate = true; m.computeBoundingSphere(); }, [items]);
+  const col: Record<string, string> = { primary: "#2b2f2e", secondary: "#353936", rail: "#6d5a44", river: "#2e4a52", flyover: "#4a4c48", underpass: "#161918" };
+  return <group>{items.merged.map(({ k, g }) => (
+    <mesh key={k} geometry={g} receiveShadow castShadow={k === "flyover"} position-y={k === "river" ? -0.2 : 0}>
+      <meshStandardMaterial color={col[k] ?? "#333"} roughness={k === "river" ? 0.15 : 0.9} metalness={k === "river" ? 0.4 : 0} side={THREE.DoubleSide} />
+    </mesh>))}
+    {items.piers.length > 0 && <instancedMesh ref={pierRef} args={[undefined, undefined, items.piers.length]} castShadow><boxGeometry /><meshStandardMaterial color="#8c867a" roughness={0.9} /></instancedMesh>}
+  </group>;
 }
 
 function Traffic({ data }: { data: SceneData }) {
@@ -104,7 +129,7 @@ function Traffic({ data }: { data: SceneData }) {
       const cum = [0]; for (let i = 1; i < r.points.length; i++) cum.push(cum[i - 1] + Math.hypot(r.points[i][0] - r.points[i - 1][0], r.points[i][1] - r.points[i - 1][1]));
       return { r, cum, len: cum[cum.length - 1] };
     });
-    const cars = Array.from({ length: 180 }, (_, i) => ({ p: paths[i % paths.length], t: Math.random(), dir: i % 2 ? 1 : -1, v: 9 + Math.random() * 6 }));
+    const cars = Array.from({ length: 360 }, (_, i) => ({ p: paths[i % paths.length], t: Math.random(), dir: i % 2 ? 1 : -1, v: 9 + Math.random() * 6 }));
     return cars;
   }, [data]);
   const m = useMemo(() => new THREE.Matrix4(), []);
@@ -116,7 +141,7 @@ function Traffic({ data }: { data: SceneData }) {
       const a = c.p.r.points[k - 1], b = c.p.r.points[k], s = (d - cum[k - 1]) / (cum[k] - cum[k - 1] || 1);
       const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1, off = c.dir * c.p.r.width * 0.22;
       const x = a[0] + dx * s - (dz / l) * off, z = a[1] + dz * s + (dx / l) * off;
-      m.makeTranslation(x, sampleTerrain(data.terrain, x, z) + 1.6, z); mesh.setMatrixAt(i, m);
+      m.makeTranslation(x, sampleTerrain(data.terrain, x, z) + 1.6 + roadLift(c.p.r, d, c.p.len), z); mesh.setMatrixAt(i, m);
     });
     mesh.instanceMatrix.needsUpdate = true;
   });
@@ -178,7 +203,7 @@ function Lighting({ night }: { night: React.MutableRefObject<number> }) {
   const sun = useRef<THREE.DirectionalLight>(null), amb = useRef<THREE.HemisphereLight>(null);
   const { scene } = useThree();
   const tmp = useMemo(() => ({ day: C("#a9b8b2"), dawn: C("#d59a6a"), nightC: C("#11181b"), c: new THREE.Color(), warm: C("#ffb978"), white: C("#fff4e2") }), []);
-  useEffect(() => { scene.background = new THREE.Color(); scene.fog = new THREE.Fog("#000", 900, 2200); }, [scene]);
+  useEffect(() => { scene.background = new THREE.Color(); scene.fog = new THREE.Fog("#000", 1500, 3800); }, [scene]);
   useFrame(() => {
     const { hour, month } = useTwin.getState();
     const [x, y, z] = sunDirection(hour, month), el = sunPosition(hour, month).elevation;
@@ -186,13 +211,13 @@ function Lighting({ night }: { night: React.MutableRefObject<number> }) {
     const low = Math.max(0, 1 - Math.abs(el - 6) / 18);
     tmp.c.copy(tmp.day).lerp(tmp.dawn, low * 0.7).lerp(tmp.nightC, nf);
     (scene.background as THREE.Color).copy(tmp.c); (scene.fog as THREE.Fog).color.copy(tmp.c);
-    if (sun.current) { sun.current.position.set(x * 800, y * 800, z * 800); sun.current.intensity = (1 - nf) * 2.6; sun.current.color.copy(tmp.white).lerp(tmp.warm, low); }
+    if (sun.current) { sun.current.position.set(x * 1500, y * 1500, z * 1500); sun.current.intensity = (1 - nf) * 2.6; sun.current.color.copy(tmp.white).lerp(tmp.warm, low); }
     if (amb.current) amb.current.intensity = 0.35 + (1 - nf) * 0.7;
   });
   return <>
     <hemisphereLight ref={amb} args={["#cfd8d2", "#3a332a", 0.8]} />
     <directionalLight ref={sun} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0004}
-      shadow-camera-left={-650} shadow-camera-right={650} shadow-camera-top={650} shadow-camera-bottom={-650} shadow-camera-far={2000} />
+      shadow-camera-left={-1300} shadow-camera-right={1300} shadow-camera-top={1300} shadow-camera-bottom={-1300} shadow-camera-far={3000} />
     <Environment resolution={64}>
       <Lightformer intensity={1.2} position={[0, 5, 0]} scale={[10, 10, 1]} rotation-x={Math.PI / 2} />
       <Lightformer intensity={0.6} color="#e6b872" position={[-5, 1, -1]} rotation-y={Math.PI / 2} scale={[20, 1, 1]} />
@@ -203,11 +228,11 @@ function Lighting({ night }: { night: React.MutableRefObject<number> }) {
 function CameraRig({ data }: { data: SceneData }) {
   const { camera, controls } = useThree() as unknown as { camera: THREE.PerspectiveCamera; controls: { target: THREE.Vector3; update: () => void } | null };
   const flight = useTwin((s) => s.flight), mode = useTwin((s) => s.mode);
-  const goal = useRef<{ pos: THREE.Vector3; tgt: THREE.Vector3; fov: number; active: boolean }>({ pos: new THREE.Vector3(620, 640, 620), tgt: new THREE.Vector3(), fov: 30, active: true });
+  const goal = useRef<{ pos: THREE.Vector3; tgt: THREE.Vector3; fov: number; active: boolean }>({ pos: new THREE.Vector3(1250, 1250, 1250), tgt: new THREE.Vector3(), fov: 30, active: true });
   useEffect(() => {
     const a = data.anchors.find((x) => x.name === flight.name) ?? data.anchors[0];
     const pos = new THREE.Vector3(...a.position), tgt = new THREE.Vector3(...a.target);
-    if (mode === "orbit" && a.name === data.anchors[0].name) pos.set(380, 260, 440);
+    if (mode === "orbit" && a.name === data.anchors[0].name) pos.set(760, 520, 880);
     goal.current = { pos, tgt, fov: mode === "isometric" ? 30 : 45, active: true };
   }, [flight, mode, data]);
   useFrame((_, dt) => {
@@ -217,7 +242,7 @@ function CameraRig({ data }: { data: SceneData }) {
     camera.fov += (g.fov - camera.fov) * k; camera.updateProjectionMatrix(); controls.update();
     if (camera.position.distanceTo(g.pos) < 0.5) g.active = false;
   });
-  return <OrbitControls makeDefault enableDamping dampingFactor={0.08} maxPolarAngle={mode === "isometric" ? 1.0 : 1.45} minPolarAngle={mode === "isometric" ? 0.7 : 0.1} minDistance={60} maxDistance={1600} onStart={() => (goal.current.active = false)} />;
+  return <OrbitControls makeDefault enableDamping dampingFactor={0.08} maxPolarAngle={mode === "isometric" ? 1.0 : 1.45} minPolarAngle={mode === "isometric" ? 0.7 : 0.1} minDistance={60} maxDistance={2800} onStart={() => (goal.current.active = false)} />;
 }
 
 function Ready() {

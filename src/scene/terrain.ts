@@ -17,3 +17,11 @@ export function distToPolyline(px: number, pz: number, pts: [number, number][]) 
   }
   return best;
 }
+
+/** Extra height of a road at distance d along it: flyovers ramp up to their deck, underpasses dip. */
+export function roadLift(r: { bridge?: number; tunnel?: boolean }, d: number, len: number) {
+  const ramp = Math.min(1, d / 40, (len - d) / 40);
+  if (r.bridge) return 7 * Math.min(r.bridge, 2) * Math.max(0, ramp);
+  if (r.tunnel) return -0.2;
+  return 0;
+}

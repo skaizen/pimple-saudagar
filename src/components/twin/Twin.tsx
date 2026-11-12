@@ -15,7 +15,7 @@ export function Twin() {
   useEffect(() => { if (ready) { const t = setTimeout(() => setGone(true), 900); return () => clearTimeout(t); } return undefined; }, [ready]);
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-background" data-scene-ready={ready ? "" : undefined}>
-      {data && <Canvas shadows dpr={[1, 1.75]} camera={{ position: [620, 640, 620], fov: 30, near: 1, far: 4000 }}
+      {data && <Canvas shadows dpr={[1, 1.75]} camera={{ position: [1250, 1250, 1250], fov: 30, near: 1, far: 7000 }}
         gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}>
         <Suspense fallback={null}><World data={data} /></Suspense>
       </Canvas>}
