@@ -242,7 +242,7 @@ function CameraRig({ data }: { data: SceneData }) {
     camera.fov += (g.fov - camera.fov) * k; camera.updateProjectionMatrix(); controls.update();
     if (camera.position.distanceTo(g.pos) < 0.5) g.active = false;
   });
-  return <MapControls ref={(c) => { if (c && !(c as unknown as { _k?: boolean })._k) { c.listenToKeyEvents(window); (c as unknown as { _k?: boolean })._k = true; } }} makeDefault keyPanSpeed={40} screenSpacePanning={false} enableDamping dampingFactor={0.08} maxPolarAngle={mode === "isometric" ? 1.0 : 1.45} minPolarAngle={mode === "isometric" ? 0.7 : 0.1} minDistance={60} maxDistance={2800} onStart={() => (goal.current.active = false)} />;
+  return <MapControls ref={(c) => { if (c && !(c as unknown as { _k?: boolean })._k) { c.listenToKeyEvents(window as unknown as HTMLElement); (c as unknown as { _k?: boolean })._k = true; } }} makeDefault keyPanSpeed={40} screenSpacePanning={false} enableDamping dampingFactor={0.08} maxPolarAngle={mode === "isometric" ? 1.0 : 1.45} minPolarAngle={mode === "isometric" ? 0.7 : 0.1} minDistance={60} maxDistance={2800} onStart={() => (goal.current.active = false)} />;
 }
 
 function Ready() {
