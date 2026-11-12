@@ -38,7 +38,7 @@ export function Hud({ data }: { data: SceneData }) {
           <div className="flex flex-wrap gap-1.5">
             {data.anchors.map((a) => <button key={a.name} className="twin-chip" data-on={s.flight.name === a.name} onClick={() => s.flyTo(a.name)}>{a.name}</button>)}
           </div>
-          <p className="mt-2 flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground"><MousePointer2 className="h-3 w-3" />Drag to rotate · Right-drag to pan · Scroll to zoom</p>
+          <p className="mt-2 flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground"><MousePointer2 className="h-3 w-3" />Drag to move map · Right-drag to rotate · Arrow keys pan · Scroll to zoom</p>
         </div>
 
         <div className="glass pointer-events-auto w-full rounded-2xl p-4 md:w-80">

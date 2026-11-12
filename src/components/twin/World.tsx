@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Html, OrbitControls, Environment, Lightformer } from "@react-three/drei";
+import { Html, MapControls, Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { SceneData, XZ } from "@/scene/types";
@@ -242,7 +242,7 @@ function CameraRig({ data }: { data: SceneData }) {
     camera.fov += (g.fov - camera.fov) * k; camera.updateProjectionMatrix(); controls.update();
     if (camera.position.distanceTo(g.pos) < 0.5) g.active = false;
   });
-  return <OrbitControls makeDefault enableDamping dampingFactor={0.08} maxPolarAngle={mode === "isometric" ? 1.0 : 1.45} minPolarAngle={mode === "isometric" ? 0.7 : 0.1} minDistance={60} maxDistance={2800} onStart={() => (goal.current.active = false)} />;
+  return <MapControls makeDefault keyEvents keyPanSpeed={40} screenSpacePanning={false} enableDamping dampingFactor={0.08} maxPolarAngle={mode === "isometric" ? 1.0 : 1.45} minPolarAngle={mode === "isometric" ? 0.7 : 0.1} minDistance={60} maxDistance={2800} onStart={() => (goal.current.active = false)} />;
 }
 
 function Ready() {
