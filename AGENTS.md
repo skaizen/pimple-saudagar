@@ -28,3 +28,8 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Architecture
+- 3D twin: pure logic (sun, season, terrain, mock generator) in `src/scene/` with no React/three imports so it stays unit-testable; three.js drawing lives in `src/components/twin/`.
+- Scene data comes from `/scene.json` if present, else the seeded generator — keep both on the `SceneData` type so real data drops in.
+- Per-frame values (traffic, night factor, camera tween) live in refs; zustand holds only UI state.
