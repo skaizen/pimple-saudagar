@@ -39,3 +39,4 @@ python3 pipeline/build_scene.py --lat 28.6315 --lon 77.2167 --size 1.5 --out pub
 - **Lamps**: Emissive fixtures placed along major arterial corridors for nighttime lighting.
 - **Terrain**: 16x15 elevation grid matching local topography.
 - **Landmarks & Anchors**: Camera bookmarks for smooth cinematic fly-throughs.
+
