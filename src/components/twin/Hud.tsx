@@ -61,7 +61,7 @@ export function Hud({ data }: { data: SceneData }) {
               {flowering.length ? flowering.map((f) => <span key={f} className="bloom-tag">{f} in bloom</span>) : <span className="text-[11px] text-muted-foreground">No major flowering this month</span>}
             </div>
           </div>}
-          <p className="mt-3 border-t border-border pt-2 text-[10px] leading-relaxed text-muted-foreground">© OpenStreetMap contributors · heights estimated · three.js</p>
+          <p className="mt-3 border-t border-border pt-2 text-[10px] leading-relaxed text-muted-foreground">© OpenStreetMap contributors · Overture Maps · heights estimated · three.js</p>
         </div>
       </div>
     </div>
