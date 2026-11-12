@@ -200,10 +200,10 @@ function Labels({ data }: { data: SceneData }) {
 }
 
 function Pois({ data }: { data: SceneData }) {
-  const kinds = useTwin((s) => s.places);
+  const kinds = useTwin((s) => s.places), names = useTwin((s) => s.labels);
   return <>{(data.pois ?? []).filter((p) => kinds.includes(p.kind)).map((p, i) => (
     <Html key={i} position={[p.x, sampleTerrain(data.terrain, p.x, p.z) + 22, p.z]} center zIndexRange={[9, 0]} style={{ pointerEvents: "none" }}>
-      <div className="twin-poi" data-kind={p.kind} title={p.name}><span className="twin-poi-dot" /><span className="twin-poi-name">{p.name}</span></div>
+      <div className="twin-poi" data-kind={p.kind} title={p.name}><span className="twin-poi-dot" />{names ? <span className="twin-poi-name">{p.name}</span> : null}</div>
     </Html>))}</>;
 }
 
