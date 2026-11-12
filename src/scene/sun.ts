@@ -31,3 +31,8 @@ export function formatHour(h: number) {
   const hh = Math.floor(h), mm = Math.round((h - hh) * 60);
   return `${String(hh + (mm === 60 ? 1 : 0)).padStart(2, "0")}:${String(mm % 60).padStart(2, "0")}`;
 }
+/** Current wall-clock hour (fractional) and month in Pune (IST, UTC+5:30). */
+export function istNow(d: Date = new Date()) {
+  const t = new Date(d.getTime() + 330 * 60000);
+  return { hour: t.getUTCHours() + t.getUTCMinutes() / 60, month: t.getUTCMonth() + 1 };
+}
