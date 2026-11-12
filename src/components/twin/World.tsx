@@ -39,7 +39,7 @@ function Terrain({ data }: { data: SceneData }) {
 function Buildings({ data, night }: { data: SceneData; night: React.MutableRefObject<number> }) {
   const mat = useRef<THREE.MeshStandardMaterial>(null);
   const { geo, edges, win } = useMemo(() => {
-    const tint: Record<string, string> = { residential: "#c9bfae", commercial: "#b7ab98", institution: "#a9b0a4" };
+    const tint: Record<string, string> = { residential: "#c9bfae", commercial: "#b7ab98", institution: "#a9b0a4", construction: "#c99a5b" };
     const parts = data.buildings.map((b) => {
       const shape = new THREE.Shape(b.ring.map(([x, z]) => new THREE.Vector2(x, -z)));
       const g = new THREE.ExtrudeGeometry(shape, { depth: b.h, bevelEnabled: false });
@@ -199,6 +199,14 @@ function Labels({ data }: { data: SceneData }) {
     </Html>))}</>;
 }
 
+function Pois({ data }: { data: SceneData }) {
+  const kinds = useTwin((s) => s.places);
+  return <>{(data.pois ?? []).filter((p) => kinds.includes(p.kind)).map((p, i) => (
+    <Html key={i} position={[p.x, sampleTerrain(data.terrain, p.x, p.z) + 22, p.z]} center zIndexRange={[9, 0]} style={{ pointerEvents: "none" }}>
+      <div className="twin-poi" data-kind={p.kind} title={p.name}><span className="twin-poi-dot" /><span className="twin-poi-name">{p.name}</span></div>
+    </Html>))}</>;
+}
+
 function Lighting({ night }: { night: React.MutableRefObject<number> }) {
   const sun = useRef<THREE.DirectionalLight>(null), amb = useRef<THREE.HemisphereLight>(null);
   const { scene } = useThree();
@@ -262,6 +270,7 @@ export function World({ data }: { data: SceneData }) {
     <Lamps data={data} night={night} />
     <Traffic data={data} />
     <Labels data={data} />
+    <Pois data={data} />
     <CameraRig data={data} />
     <Ready />
   </>;

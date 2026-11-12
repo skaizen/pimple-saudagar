@@ -36,3 +36,4 @@ use the editor.
 - `noUncheckedIndexedAccess` is off: the 3D geometry code indexes point arrays heavily and bounds are guaranteed by loops.
 - Real map data: `public/scene.json` is generated from an OpenStreetMap extract by `scripts/osm_to_scene.py`; rerun it to refresh, keep OSM attribution in the HUD.
 - Overture Maps buildings/places are merged on top of the OSM scene by `scripts/overture_merge.py` (run after `osm_to_scene.py`; fetch via duckdb from `s3://overturemaps-us-west-2/release/<latest>/`) — OSM wins where footprints overlap because it carries names, levels and bridge data.
+- Place markers (schools, temples, malls, construction) live in `scene.json` `pois`, added by `scripts/osm_pois.py` then `scripts/overture_pois.py` (run after the merge) — markers stay optional on `SceneData` so the generator still type-checks.

@@ -3,7 +3,8 @@ import { Box, Orbit, Tag, Car, Aperture, Sun, ChevronDown, Flower2, MousePointer
 import { useTwin } from "@/scene/store";
 import { PRESETS, formatHour, lightLabel } from "@/scene/sun";
 import { MONTHS, floweringNow } from "@/scene/season";
-import type { SceneData } from "@/scene/types";
+import type { SceneData, PoiKind } from "@/scene/types";
+const PLACES: { k: PoiKind; label: string }[] = [{ k: "school", label: "Schools" }, { k: "temple", label: "Temples" }, { k: "mall", label: "Malls" }, { k: "construction", label: "Under construction" }];
 
 function Toggle({ on, onClick, icon: Icon, children }: { on: boolean; onClick: () => void; icon: typeof Box; children: React.ReactNode }) {
   return <button className="twin-chip" data-on={on} onClick={onClick} aria-pressed={on}><Icon className="h-3.5 w-3.5" />{children}</button>;
@@ -30,6 +31,11 @@ export function Hud({ data }: { data: SceneData }) {
           <Toggle on={s.labels} onClick={() => s.set({ labels: !s.labels })} icon={Tag}>Labels</Toggle>
           <Toggle on={s.traffic} onClick={() => s.set({ traffic: !s.traffic })} icon={Car}>Traffic</Toggle>
           <Toggle on={s.lens} onClick={() => s.set({ lens: !s.lens })} icon={Aperture}>Miniature</Toggle>
+          <span className="basis-full" />
+          {PLACES.map(({ k, label }) => {
+            const on = s.places.includes(k), n = (data.pois ?? []).filter((p) => p.kind === k).length;
+            return <button key={k} className="twin-chip" data-on={on} aria-pressed={on} onClick={() => s.set({ places: on ? s.places.filter((x) => x !== k) : [...s.places, k] })}><span className="twin-poi-dot" data-kind={k} />{label} <span className="opacity-60">{n}</span></button>;
+          })}
         </div>
       </div>
 

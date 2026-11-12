@@ -137,3 +137,11 @@ body { font-family: var(--font-sans); }
 .loader-bar { width: 220px; height: 2px; background: var(--border); overflow: hidden; border-radius: 2px; }
 .loader-bar span { display: block; height: 100%; width: 40%; background: var(--primary); animation: load-slide 1.4s ease-in-out infinite; }
 @keyframes load-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+
+.twin-poi { display: flex; align-items: center; gap: 5px; white-space: nowrap; font-size: 10px; color: var(--foreground); background: var(--glass); border-radius: 999px; padding: 2px 7px 2px 3px; border: 1px solid color-mix(in oklab, var(--poi) 60%, transparent); }
+.twin-poi-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.twin-poi-dot { width: 9px; height: 9px; border-radius: 999px; background: var(--poi); box-shadow: 0 0 0 2px color-mix(in oklab, var(--poi) 30%, transparent); flex: none; }
+[data-kind="school"] { --poi: oklch(0.72 0.12 240); }
+[data-kind="temple"] { --poi: oklch(0.72 0.16 50); }
+[data-kind="mall"] { --poi: oklch(0.7 0.14 330); }
+[data-kind="construction"] { --poi: oklch(0.8 0.15 85); }
