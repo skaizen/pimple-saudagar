@@ -13,11 +13,13 @@ import {
   Layers,
   Eye,
   EyeOff,
+  Video,
   X,
 } from "lucide-react";
 import { useTwin } from "@/scene/store";
 import { PRESETS, formatHour, lightLabel } from "@/scene/sun";
 import { MONTHS, floweringNow } from "@/scene/season";
+import { CAMERA_FEEDS } from "@/scene/cameras";
 import type { SceneData, PoiKind } from "@/scene/types";
 
 const PLACES: { k: PoiKind; label: string }[] = [
@@ -148,7 +150,12 @@ export function Hud({ data }: { data: SceneData }) {
               <span>· {lightLabel(s.hour, s.month)}</span>
               <span>· {c.buildings} bldgs</span>
               <span>· {c.trees} trees</span>
-              {s.traffic ? <span className="text-primary/90">· traffic on</span> : null}
+              {s.traffic && s.trafficCorridors["brts"] ? (
+                <span className="flex items-center gap-1 font-medium" style={{ color: s.trafficCorridors["brts"].color }}>
+                  <span>●</span>
+                  <span>Google Maps: {s.trafficCorridors["brts"].level} ({s.trafficCorridors["brts"].speedKmH} km/h)</span>
+                </span>
+              ) : null}
             </p>
           </div>
         </header>
@@ -182,7 +189,14 @@ export function Hud({ data }: { data: SceneData }) {
             onClick={() => s.set({ traffic: !s.traffic })}
             icon={Car}
           >
-            Traffic
+            Live Traffic
+          </Toggle>
+          <Toggle
+            on={s.cctv}
+            onClick={() => s.set({ cctv: !s.cctv })}
+            icon={Video}
+          >
+            CCTV ({CAMERA_FEEDS.length})
           </Toggle>
           <Toggle
             on={s.lens}
@@ -314,6 +328,13 @@ export function Hud({ data }: { data: SceneData }) {
               icon={Car}
             >
               Traffic
+            </Toggle>
+            <Toggle
+              on={s.cctv}
+              onClick={() => s.set({ cctv: !s.cctv })}
+              icon={Video}
+            >
+              CCTV ({CAMERA_FEEDS.length})
             </Toggle>
             <Toggle
               on={s.lens}

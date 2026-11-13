@@ -8,6 +8,7 @@ import { sampleTerrain, roadLift } from "@/scene/terrain";
 import { sunDirection, nightFactor, sunPosition } from "@/scene/sun";
 import { canopyColor } from "@/scene/season";
 import { useTwin } from "@/scene/store";
+import { CAMERA_FEEDS } from "@/scene/cameras";
 
 const C = (h: string) => new THREE.Color(h);
 
@@ -124,30 +125,125 @@ function Roads({ data }: { data: SceneData }) {
 function Traffic({ data }: { data: SceneData }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   const visible = useTwin((s) => s.traffic);
+  const trafficCorridors = useTwin((s) => s.trafficCorridors);
+
   const sim = useMemo(() => {
     const paths = data.roads.filter((r) => r.type === "primary" || r.type === "secondary").map((r) => {
       const cum = [0]; for (let i = 1; i < r.points.length; i++) cum.push(cum[i - 1] + Math.hypot(r.points[i][0] - r.points[i - 1][0], r.points[i][1] - r.points[i - 1][1]));
       return { r, cum, len: cum[cum.length - 1] };
     });
-    const cars = Array.from({ length: 360 }, (_, i) => ({ p: paths[i % paths.length], t: Math.random(), dir: i % 2 ? 1 : -1, v: 9 + Math.random() * 6 }));
+    const cars = Array.from({ length: 360 }, (_, i) => {
+      const p = paths[i % paths.length];
+      const midX = p.r.points[0]?.[0] ?? 0;
+      const midZ = p.r.points[0]?.[1] ?? 0;
+      let corridorKey = "rahatani";
+      if (midZ > 100) corridorKey = "brts";
+      else if (midX < -150 && midZ < 0) corridorKey = "kunal";
+      else if (midX >= -150 && midZ < 0) corridorKey = "shivar";
+
+      return {
+        p,
+        t: Math.random(),
+        dir: i % 2 ? 1 : -1,
+        baseV: 9 + Math.random() * 6,
+        corridorKey,
+      };
+    });
     return cars;
   }, [data]);
+
+  // Update car instance colors based on live Google Maps traffic corridor congestion
+  useEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const color = new THREE.Color();
+    sim.forEach((c, i) => {
+      const corridor = trafficCorridors[c.corridorKey] || trafficCorridors["brts"];
+      if (corridor) {
+        if (corridor.level === "heavy") {
+          color.set(Math.random() < 0.7 ? "#ef4444" : "#fca5a5");
+        } else if (corridor.level === "moderate") {
+          color.set(Math.random() < 0.7 ? "#f59e0b" : "#fde68a");
+        } else {
+          color.set(Math.random() < 0.85 ? "#ffd89a" : "#10b981");
+        }
+      } else {
+        color.set("#ffd89a");
+      }
+      mesh.setColorAt(i, color);
+    });
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }, [sim, trafficCorridors]);
+
   const m = useMemo(() => new THREE.Matrix4(), []);
   useFrame((_, dtRaw) => {
-    const dt = Math.min(dtRaw, 0.05); const mesh = ref.current; if (!mesh) return;
+    const dt = Math.min(dtRaw, 0.05);
+    const mesh = ref.current;
+    if (!mesh) return;
+
     sim.forEach((c, i) => {
-      c.t = (c.t + (c.dir * c.v * dt) / c.p.len + 1) % 1;
-      const d = c.t * c.p.len, cum = c.p.cum; let k = 1; while (k < cum.length - 1 && cum[k] < d) k++;
+      const corridor = trafficCorridors[c.corridorKey];
+      const speedMult = corridor?.level === "heavy" ? 0.35 : corridor?.level === "moderate" ? 0.7 : 1.1;
+      const v = c.baseV * speedMult;
+
+      c.t = (c.t + (c.dir * v * dt) / c.p.len + 1) % 1;
+      const d = c.t * c.p.len, cum = c.p.cum;
+      let k = 1;
+      while (k < cum.length - 1 && cum[k] < d) k++;
       const a = c.p.r.points[k - 1], b = c.p.r.points[k], s = (d - cum[k - 1]) / (cum[k] - cum[k - 1] || 1);
       const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1, off = c.dir * c.p.r.width * 0.22;
       const x = a[0] + dx * s - (dz / l) * off, z = a[1] + dz * s + (dx / l) * off;
-      m.makeTranslation(x, sampleTerrain(data.terrain, x, z) + 1.6 + roadLift(c.p.r, d, c.p.len), z); mesh.setMatrixAt(i, m);
+      m.makeTranslation(x, sampleTerrain(data.terrain, x, z) + 1.6 + roadLift(c.p.r, d, c.p.len), z);
+      mesh.setMatrixAt(i, m);
     });
     mesh.instanceMatrix.needsUpdate = true;
   });
-  return <instancedMesh ref={ref} args={[undefined, undefined, sim.length]} visible={visible} frustumCulled={false}>
-    <sphereGeometry args={[1.4, 8, 6]} /><meshBasicMaterial color="#ffd89a" toneMapped={false} />
-  </instancedMesh>;
+
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, sim.length]} visible={visible} frustumCulled={false}>
+      <sphereGeometry args={[1.4, 8, 6]} />
+      <meshBasicMaterial toneMapped={false} />
+    </instancedMesh>
+  );
+}
+
+function SurveillanceCameras({ data }: { data: SceneData }) {
+  const cctvOn = useTwin((s) => s.cctv);
+  const set = useTwin((s) => s.set);
+  const cameras = data.cameras ?? CAMERA_FEEDS;
+
+  if (!cctvOn) return null;
+
+  return (
+    <>
+      {cameras.map((cam) => (
+        <Html
+          key={cam.id}
+          position={cam.position}
+          center
+          zIndexRange={[18, 0]}
+          style={{ pointerEvents: "auto" }}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              set({ activeCamera: cam });
+            }}
+            className="group flex cursor-pointer items-center gap-1.5 rounded-full bg-black/85 px-2.5 py-1 text-[11px] font-mono font-bold text-white shadow-xl ring-1 ring-primary/40 backdrop-blur-sm transition-all hover:scale-110 hover:ring-primary active:scale-95"
+            title={`View CCTV Feed: ${cam.name}`}
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+            </span>
+            <span className="tracking-tight text-white/95 group-hover:text-primary">
+              {cam.id.toUpperCase()}
+            </span>
+          </button>
+        </Html>
+      ))}
+    </>
+  );
 }
 
 function Trees({ data }: { data: SceneData }) {
@@ -271,6 +367,7 @@ export function World({ data }: { data: SceneData }) {
     <Traffic data={data} />
     <Labels data={data} />
     <Pois data={data} />
+    <SurveillanceCameras data={data} />
     <CameraRig data={data} />
     <Ready />
   </>;

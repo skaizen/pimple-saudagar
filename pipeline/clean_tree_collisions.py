@@ -107,3 +107,4 @@ def clean_trees(scene_path=None):
 
 if __name__ == "__main__":
     clean_trees()
+

@@ -3,10 +3,12 @@ import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import { World } from "./World";
 import { Hud } from "./Hud";
+import { CameraModal } from "./CameraModal";
 import { loadScene } from "@/scene/generate";
 import type { SceneData } from "@/scene/types";
 import { useTwin } from "@/scene/store";
 import { istNow } from "@/scene/sun";
+import { fetchLiveGoogleTraffic } from "@/scene/traffic";
 
 export function Twin() {
   const [data, setData] = useState<SceneData | null>(null);
@@ -14,17 +16,37 @@ export function Twin() {
   const [gone, setGone] = useState(false);
   useEffect(() => { loadScene().then(setData); }, []);
   const live = useTwin((s) => s.live);
+
   useEffect(() => {
     if (!live) return undefined;
     const tick = () => useTwin.getState().set(istNow());
     tick(); const id = setInterval(tick, 30000); return () => clearInterval(id);
   }, [live]);
+
+  // Periodic Google Maps traffic refresh (60s)
+  useEffect(() => {
+    const updateTraffic = async () => {
+      const { hour } = useTwin.getState();
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      const corridors = await fetchLiveGoogleTraffic(hour, apiKey);
+      useTwin.getState().set({
+        trafficCorridors: corridors,
+        trafficSource: apiKey ? "google_api" : "ist_model",
+      });
+    };
+    updateTraffic();
+    const id = setInterval(updateTraffic, 60000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     const load = () => fetch("https://api.open-meteo.com/v1/forecast?latitude=18.596&longitude=73.795&current=temperature_2m,weather_code,wind_speed_10m&timezone=Asia%2FKolkata")
       .then((r) => r.json()).then((j) => { const c = j?.current; if (c) useTwin.getState().set({ weather: { temp: c.temperature_2m, code: c.weather_code, wind: c.wind_speed_10m } }); }).catch(() => {});
     load(); const id = setInterval(load, 600000); return () => clearInterval(id);
   }, []);
+
   useEffect(() => { if (ready) { const t = setTimeout(() => setGone(true), 900); return () => clearTimeout(t); } return undefined; }, [ready]);
+
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-background" data-scene-ready={ready ? "" : undefined}>
       {data && <Canvas shadows dpr={[1, 1.75]} camera={{ position: [1250, 1250, 1250], fov: 30, near: 1, far: 7000 }}
@@ -33,6 +55,7 @@ export function Twin() {
       </Canvas>}
       <div className="lens-vignette" data-on={lens} aria-hidden />
       {data && <Hud data={data} />}
+      <CameraModal />
       {!gone && <div className="loader" data-done={ready}>
         <div className="text-center">
           <p className="eyebrow">PCMC PUNE · 411027</p>

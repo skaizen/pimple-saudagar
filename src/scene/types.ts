@@ -8,6 +8,29 @@ export interface Tree { x: number; z: number; y: number; species: string; height
 export interface Furniture { type: "lamp"; x: number; z: number; y: number }
 export interface Label { name: string; x: number; z: number; y: number; type: "landmark" | "road" | "area" }
 export interface Anchor { name: string; position: [number, number, number]; target: [number, number, number] }
+
+export interface CameraFeed {
+  id: string;
+  name: string;
+  junction: string;
+  position: [number, number, number]; // [x, y, z] in 3D scene
+  type: "youtube" | "hls" | "simulated";
+  streamUrl?: string;
+  youtubeId?: string;
+  fps?: number;
+}
+
+export type CongestionLevel = "low" | "moderate" | "heavy";
+
+export interface TrafficCorridor {
+  id: string;
+  name: string;
+  level: CongestionLevel;
+  speedKmH: number;
+  delaySec: number;
+  color: string;
+}
+
 export interface SceneData {
   meta: { center_lon_lat: [number, number]; area_m2: number; counts: { buildings: number; trees: number; roads: number; lamps: number } };
   terrain: { cols: number; rows: number; step: number; values: number[] };
@@ -18,4 +41,5 @@ export interface SceneData {
   labels: Label[];
   anchors: Anchor[];
   pois?: Poi[];
+  cameras?: CameraFeed[];
 }
