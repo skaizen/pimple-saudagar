@@ -38,3 +38,5 @@ pipeline/*.xml
 *.njsproj
 *.sln
 *.sw?
+.vercel
+.env*
