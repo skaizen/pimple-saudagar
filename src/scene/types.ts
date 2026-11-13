@@ -9,17 +9,6 @@ export interface Furniture { type: "lamp"; x: number; z: number; y: number }
 export interface Label { name: string; x: number; z: number; y: number; type: "landmark" | "road" | "area" }
 export interface Anchor { name: string; position: [number, number, number]; target: [number, number, number] }
 
-export interface CameraFeed {
-  id: string;
-  name: string;
-  junction: string;
-  position: [number, number, number]; // [x, y, z] in 3D scene
-  type: "youtube" | "hls" | "simulated";
-  streamUrl?: string;
-  youtubeId?: string;
-  fps?: number;
-}
-
 export type CongestionLevel = "low" | "moderate" | "heavy";
 
 export interface TrafficCorridor {
@@ -41,5 +30,4 @@ export interface SceneData {
   labels: Label[];
   anchors: Anchor[];
   pois?: Poi[];
-  cameras?: CameraFeed[];
 }

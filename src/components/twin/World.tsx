@@ -8,7 +8,6 @@ import { sampleTerrain, roadLift } from "@/scene/terrain";
 import { sunDirection, nightFactor, sunPosition } from "@/scene/sun";
 import { canopyColor } from "@/scene/season";
 import { useTwin } from "@/scene/store";
-import { CAMERA_FEEDS } from "@/scene/cameras";
 
 const C = (h: string) => new THREE.Color(h);
 
@@ -207,45 +206,6 @@ function Traffic({ data }: { data: SceneData }) {
   );
 }
 
-function SurveillanceCameras({ data }: { data: SceneData }) {
-  const cctvOn = useTwin((s) => s.cctv);
-  const set = useTwin((s) => s.set);
-  const cameras = data.cameras ?? CAMERA_FEEDS;
-
-  if (!cctvOn) return null;
-
-  return (
-    <>
-      {cameras.map((cam) => (
-        <Html
-          key={cam.id}
-          position={cam.position}
-          center
-          zIndexRange={[18, 0]}
-          style={{ pointerEvents: "auto" }}
-        >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              set({ activeCamera: cam });
-            }}
-            className="group flex cursor-pointer items-center gap-1.5 rounded-full bg-black/85 px-2.5 py-1 text-[11px] font-mono font-bold text-white shadow-xl ring-1 ring-primary/40 backdrop-blur-sm transition-all hover:scale-110 hover:ring-primary active:scale-95"
-            title={`View CCTV Feed: ${cam.name}`}
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-            </span>
-            <span className="tracking-tight text-white/95 group-hover:text-primary">
-              {cam.id.toUpperCase()}
-            </span>
-          </button>
-        </Html>
-      ))}
-    </>
-  );
-}
-
 function Trees({ data }: { data: SceneData }) {
   const month = useTwin((s) => s.month);
   const round = useRef<THREE.InstancedMesh>(null), cone = useRef<THREE.InstancedMesh>(null), trunk = useRef<THREE.InstancedMesh>(null);
@@ -367,7 +327,6 @@ export function World({ data }: { data: SceneData }) {
     <Traffic data={data} />
     <Labels data={data} />
     <Pois data={data} />
-    <SurveillanceCameras data={data} />
     <CameraRig data={data} />
     <Ready />
   </>;

@@ -3,7 +3,6 @@ import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import { World } from "./World";
 import { Hud } from "./Hud";
-import { CameraModal } from "./CameraModal";
 import { loadScene } from "@/scene/generate";
 import type { SceneData } from "@/scene/types";
 import { useTwin } from "@/scene/store";
@@ -55,7 +54,6 @@ export function Twin() {
       </Canvas>}
       <div className="lens-vignette" data-on={lens} aria-hidden />
       {data && <Hud data={data} />}
-      <CameraModal />
       {!gone && <div className="loader" data-done={ready}>
         <div className="text-center">
           <p className="eyebrow">PCMC PUNE · 411027</p>

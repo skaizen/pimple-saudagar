@@ -13,13 +13,11 @@ import {
   Layers,
   Eye,
   EyeOff,
-  Video,
   X,
 } from "lucide-react";
 import { useTwin } from "@/scene/store";
 import { PRESETS, formatHour, lightLabel } from "@/scene/sun";
 import { MONTHS, floweringNow } from "@/scene/season";
-import { CAMERA_FEEDS } from "@/scene/cameras";
 import type { SceneData, PoiKind } from "@/scene/types";
 
 const PLACES: { k: PoiKind; label: string }[] = [
@@ -192,13 +190,6 @@ export function Hud({ data }: { data: SceneData }) {
             Live Traffic
           </Toggle>
           <Toggle
-            on={s.cctv}
-            onClick={() => s.set({ cctv: !s.cctv })}
-            icon={Video}
-          >
-            CCTV ({CAMERA_FEEDS.length})
-          </Toggle>
-          <Toggle
             on={s.lens}
             onClick={() => s.set({ lens: !s.lens })}
             icon={Aperture}
@@ -328,13 +319,6 @@ export function Hud({ data }: { data: SceneData }) {
               icon={Car}
             >
               Traffic
-            </Toggle>
-            <Toggle
-              on={s.cctv}
-              onClick={() => s.set({ cctv: !s.cctv })}
-              icon={Video}
-            >
-              CCTV ({CAMERA_FEEDS.length})
             </Toggle>
             <Toggle
               on={s.lens}
