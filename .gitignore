@@ -24,6 +24,10 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Pipeline data extracts
+pipeline/*.geojson
+pipeline/*.xml
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
