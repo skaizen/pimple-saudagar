@@ -91,6 +91,9 @@ async function handleTrafficApi(request: Request, env: unknown): Promise<Respons
       const res = await fetch(gUrl);
       const data = await res.json();
 
+      (results as any)._last_status = data.status;
+      (results as any)._last_error = data.error_message;
+
       if (data.status === "OK" && data.routes?.[0]?.legs?.[0]) {
         const leg = data.routes[0].legs[0];
         const normalDuration = leg.duration.value;
@@ -114,13 +117,32 @@ async function handleTrafficApi(request: Request, env: unknown): Promise<Respons
         headers: { "content-type": "application/json", "cache-control": "public, max-age=60" },
       });
     }
-  } catch (err) {
-    console.warn("Server Google Maps query error:", err);
-  }
 
-  return new Response(JSON.stringify({ corridors: getSimulatedTraffic(hourParam), source: "ist_model" }), {
-    headers: { "content-type": "application/json", "cache-control": "public, max-age=30" },
-  });
+    // If Google returned non-OK status (e.g. key restriction or API not enabled)
+    return new Response(
+      JSON.stringify({
+        corridors: getSimulatedTraffic(hourParam),
+        source: "ist_model",
+        google_status: (results as any)._last_status || "NO_ROUTES",
+        google_error: (results as any)._last_error,
+      }),
+      {
+        headers: { "content-type": "application/json", "cache-control": "no-cache" },
+      }
+    );
+  } catch (err: any) {
+    console.warn("Server Google Maps query error:", err);
+    return new Response(
+      JSON.stringify({
+        corridors: getSimulatedTraffic(hourParam),
+        source: "ist_model",
+        error: String(err?.message || err),
+      }),
+      {
+        headers: { "content-type": "application/json", "cache-control": "no-cache" },
+      }
+    );
+  }
 }
 
 // h3 swallows in-handler throws into a normal 500 Response with body
