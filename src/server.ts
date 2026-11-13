@@ -19,10 +19,10 @@ async function getServerEntry(): Promise<ServerEntry> {
 }
 
 const CORRIDORS = [
-  { id: "brts", name: "Nashik Phata – Wakad BRTS", origin: "18.5970,73.7850", destination: "18.5990,73.8080", freeFlowSpeed: 50 },
-  { id: "kunal", name: "Kunal Icon Road", origin: "18.6040,73.7920", destination: "18.5980,73.7960", freeFlowSpeed: 38 },
-  { id: "shivar", name: "Shivar Road / Govind Garden", origin: "18.5990,73.7940", destination: "18.5950,73.8010", freeFlowSpeed: 35 },
-  { id: "rahatani", name: "Rahatani Link Road", origin: "18.6080,73.7900", destination: "18.6020,73.8050", freeFlowSpeed: 40 },
+  { id: "brts", name: "Nashik Phata – Wakad BRTS", origin: [18.5970, 73.7850], destination: [18.5990, 73.8080], freeFlowSpeed: 50 },
+  { id: "kunal", name: "Kunal Icon Road", origin: [18.6040, 73.7920], destination: [18.5980, 73.7960], freeFlowSpeed: 38 },
+  { id: "shivar", name: "Shivar Road / Govind Garden", origin: [18.5990, 73.7940], destination: [18.5950, 73.8010], freeFlowSpeed: 35 },
+  { id: "rahatani", name: "Rahatani Link Road", origin: [18.6080, 73.7900], destination: [18.6020, 73.8050], freeFlowSpeed: 40 },
 ];
 
 function getSimulatedTraffic(hourIST: number) {
@@ -86,52 +86,70 @@ async function handleTrafficApi(request: Request, env: unknown): Promise<Respons
 
   try {
     const results: Record<string, any> = {};
+    const rUrl = "https://routes.googleapis.com/directions/v2:computeRoutes";
+
     for (const c of CORRIDORS) {
-      const gUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${c.origin}&destination=${c.destination}&departure_time=now&traffic_model=best_guess&key=${apiKey}`;
-      const res = await fetch(gUrl);
+      const payload = {
+        origin: { location: { latLng: { latitude: c.origin[0], longitude: c.origin[1] } } },
+        destination: { location: { latLng: { latitude: c.destination[0], longitude: c.destination[1] } } },
+        travelMode: "DRIVE",
+        routingPreference: "TRAFFIC_AWARE",
+      };
+
+      const res = await fetch(rUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": "routes.duration,routes.staticDuration,routes.distanceMeters",
+        },
+        body: JSON.stringify(payload),
+      });
+
       const data = await res.json();
 
-      (results as any)._last_status = data.status;
-      (results as any)._last_error = data.error_message;
-
-      if (data.status === "OK" && data.routes?.[0]?.legs?.[0]) {
-        const leg = data.routes[0].legs[0];
-        const normalDuration = leg.duration.value;
-        const inTrafficDuration = leg.duration_in_traffic ? leg.duration_in_traffic.value : normalDuration;
-        const ratio = inTrafficDuration / (normalDuration || 1);
-        const distanceKm = leg.distance.value / 1000.0;
-        const speedKmH = Math.round(distanceKm / (inTrafficDuration / 3600.0));
-        const delaySec = Math.max(0, inTrafficDuration - normalDuration);
+      if (data.routes?.[0]) {
+        const route = data.routes[0];
+        const inTrafficSec = parseInt(route.duration?.replace("s", "") ?? "0", 10) || 1;
+        const normalSec = parseInt(route.staticDuration?.replace("s", "") ?? `${inTrafficSec}`, 10) || inTrafficSec;
+        const distanceMeters = route.distanceMeters ?? 2000;
+        const ratio = inTrafficSec / (normalSec || 1);
+        const distanceKm = distanceMeters / 1000.0;
+        const speedKmH = Math.max(5, Math.min(80, Math.round(distanceKm / (inTrafficSec / 3600.0))));
+        const delaySec = Math.max(0, inTrafficSec - normalSec);
 
         let level = "low";
-        if (ratio > 1.45) level = "heavy";
+        if (ratio > 1.4) level = "heavy";
         else if (ratio > 1.15) level = "moderate";
 
         const color = level === "heavy" ? "#ef4444" : level === "moderate" ? "#f59e0b" : "#10b981";
         results[c.id] = { id: c.id, name: c.name, level, speedKmH, delaySec, color };
+      } else {
+        (results as any)._error = data.error?.message || JSON.stringify(data);
       }
     }
 
-    if (Object.keys(results).length > 0) {
+    if (results.brts || results.kunal || results.shivar || results.rahatani) {
+      // Clean internal debug keys
+      delete (results as any)._error;
       return new Response(JSON.stringify({ corridors: results, source: "google_api" }), {
         headers: { "content-type": "application/json", "cache-control": "public, max-age=60" },
       });
     }
 
-    // If Google returned non-OK status (e.g. key restriction or API not enabled)
+    // If Google returned error
     return new Response(
       JSON.stringify({
         corridors: getSimulatedTraffic(hourParam),
         source: "ist_model",
-        google_status: (results as any)._last_status || "NO_ROUTES",
-        google_error: (results as any)._last_error,
+        google_error: (results as any)._error,
       }),
       {
         headers: { "content-type": "application/json", "cache-control": "no-cache" },
       }
     );
   } catch (err: any) {
-    console.warn("Server Google Maps query error:", err);
+    console.warn("Server Google Routes API error:", err);
     return new Response(
       JSON.stringify({
         corridors: getSimulatedTraffic(hourParam),
