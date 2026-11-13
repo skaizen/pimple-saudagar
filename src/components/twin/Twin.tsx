@@ -22,15 +22,14 @@ export function Twin() {
     tick(); const id = setInterval(tick, 30000); return () => clearInterval(id);
   }, [live]);
 
-  // Periodic Google Maps traffic refresh (60s)
+  // Periodic Google Maps traffic refresh (60s) via server endpoint
   useEffect(() => {
     const updateTraffic = async () => {
       const { hour } = useTwin.getState();
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      const corridors = await fetchLiveGoogleTraffic(hour, apiKey);
+      const res = await fetchLiveGoogleTraffic(hour);
       useTwin.getState().set({
-        trafficCorridors: corridors,
-        trafficSource: apiKey ? "google_api" : "ist_model",
+        trafficCorridors: res.corridors,
+        trafficSource: res.source,
       });
     };
     updateTraffic();
